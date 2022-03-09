@@ -1,21 +1,28 @@
 # Kagami
 
-## Basic Syntax
+## Syntax
+
+### module
+Every file is a module, the module name is the same as the file name.
 
 ### function
+There are two types of `function`:  
+- normal function defined in a Kagami module
 ```
-func Arubaito(a: int, b: String): int {
+func Arubaito(a: int, {b: String, c: bool?}): int {
 	// ...
 	return 100;
 }
-
-let m = Arubaito(3, "kagami");
+```
+- native function (provided by the `Kagami Runtime`)
+```
+func readFile(path: String): String = native "io_read_file";
 ```
 
 ### let
 ```
-let a: String; // a is null
-let b = 123;
+let a: String?; // a is null
+let b = 123; // the type of 'b' is int
 a = "kagami";
 ```
 

@@ -1,31 +1,34 @@
-use crate::ast::{ KagamiModule, FuncDef, FuncBlock, Block, Stmt };
+use crate::ast::{ KagamiModule, FuncDef, FuncBody, Block, Stmt };
 
 grammar;
 
 match {
     r"\s*" => {},
     r"//[^\r\n]*[\r\n]*" => {},
-    _
+    _,
 }
 
 pub KagamiModule: KagamiModule = <func_def: FuncDef> => KagamiModule { <> };
 
-FuncDef: FuncDef = {
-    "func" <ident: Ident> "(" ")" <func_block: FuncBlock> => FuncDef { <> },
-}
+FuncDef: FuncDef = "func" <ident: Ident> "(" ")" <ret_type: (":" <Ident>)?> <body: FuncBody> => FuncDef { <> };
 
-FuncBlock: FuncBlock = {
-    ":" "int" <block: Block> => FuncBlock { ret_type: "int".to_string(), <> },
-    <block: Block> => FuncBlock { ret_type: "void".to_string(), <> },
+FuncBody: FuncBody = {
+    "=" "native" <native_func: SimpleStringLiteral> ";" => FuncBody::Native(<>),
+    <block: Block> => FuncBody::Block(<>),
 }
 
 Block: Block = "{" <stmt: Stmt> "}" => Block { <> };
 
-Stmt: Stmt = "return" <num: IntConst> ";" => Stmt { <> };
+Stmt: Stmt = "return" <num: IntLiteral> ";" => Stmt { <> };
 
 Ident: String = r"[_a-zA-Z][_a-zA-Z0-9]*" => <>.to_string();
 
-IntConst: i64 = {
+SimpleStringLiteral: String = {
+    r#""([^"\\\r\n]|\\[^\r\n])*""# => (&<>[1..<>.len() - 1]).to_string(),
+    r#"'([^'\\\r\n]|\\[^\r\n])*'"# => (&<>[1..<>.len() - 1]).to_string(),
+}
+
+IntLiteral: i64 = {
   r"[1-9][0-9]*" => i64::from_str_radix(<>, 10).unwrap(),
   r"0[0-7]*" => i64::from_str_radix(<>, 8).unwrap(),
   r"0[xX][0-9a-fA-F]+" => i64::from_str_radix(&<>[2..], 16).unwrap(),
