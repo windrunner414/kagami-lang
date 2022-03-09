@@ -1,0 +1,13 @@
+[package]
+name = "kagami"
+version = "0.1.0"
+authors = ["Yuxiang Liu <windrunner414@gmail.com>"]
+edition = "2021"
+build = "build.rs"
+
+[dependencies]
+lalrpop-util = { version = "0.19.7", features = ["lexer"] }
+regex = "1.5.5"
+
+[build-dependencies]
+lalrpop = { version = "0.19.7", features = ["lexer"] }
