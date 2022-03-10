@@ -1,0 +1,7 @@
+typedef Character = native 'gal_type_Character';
+func character(name: String): Character = native 'gal_func_character';
+func say(c: Character, t: String, suspend = true) = native 'gal_func_say';
+
+func main() {
+    say(character('kagami'), 'おす！');
+}

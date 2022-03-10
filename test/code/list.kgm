@@ -1,0 +1,12 @@
+func main() {
+    typedef List = native 'std_List';
+    func createList(): List = native 'std_createList';
+    func listLen(list: List): int = native 'std_listLen';
+
+    let list = createList();
+    let len = listLen(list);
+    let i = 0;
+    while (i < len) {
+        i += 1;
+    }
+}
