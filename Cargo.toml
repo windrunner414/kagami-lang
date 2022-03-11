@@ -5,6 +5,10 @@ authors = ["Yuxiang Liu <windrunner414@gmail.com>"]
 edition = "2021"
 build = "build.rs"
 
+[profile.release]
+lto = true
+panic = "abort"
+
 [dependencies]
 lalrpop-util = { version = "0.19.7", features = ["lexer"] }
 regex = "1.5.5"
