@@ -17,7 +17,7 @@ Every file is a module, the module name is the same as the file name.
 There are two types of `function`:  
 - normal function defined in a Kagami module
 ```
-func Arubaito(a: int, b: String?, c: bool = false): int {
+func Arubaito(a: int, b: String?, {c: bool}): int {
 	// ...
 	return 100;
 }
