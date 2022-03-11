@@ -1,1 +1,1 @@
-func main(): int = native "te\nst";
+func main(): int = native "sgrfdg\nd\r\n\\\tsdf\thh\u{41}\u0042\u{0000050}hhde\"\'ds";

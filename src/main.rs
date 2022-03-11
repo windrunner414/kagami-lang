@@ -1,21 +1,28 @@
-pub mod ast;
+mod ast;
+mod base;
+mod parser;
 
-use lalrpop_util::lalrpop_mod;
 use std::env::args;
 use std::fs::read_to_string;
 use std::io;
 
-lalrpop_mod!(pub parser, "/parser/kagami.rs");
-
 fn main() -> io::Result<()> {
     let mut args = args();
     args.next();
-    let file = args.next().unwrap_or("test/code/1.kgm".to_string());
+    let file = args.next().unwrap_or_else(|| "test/code/1.kgm".to_string());
 
     let input = read_to_string(file).unwrap();
-    let kagami_ast = parser::KagamiModuleParser::new().parse(&input).unwrap();
+    let mut errors = parser::Errors::new();
 
-    println!("{:#?}", kagami_ast);
+    let kagami_ast = parser::KagamiModuleParser::new()
+        .parse(&mut errors, &input)
+        .unwrap();
+
+    if errors.is_empty() {
+        println!("{:#?}", kagami_ast);
+    } else {
+        println!("{:#?}", errors);
+    }
 
     Ok(())
 }

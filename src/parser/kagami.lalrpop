@@ -1,12 +1,26 @@
 use crate::ast::{ KagamiModule, FuncDef, FuncBody, Block, Stmt };
+use crate::parser::string_literal;
+use crate::parser::{ Errors };
+use crate::base::pos::{ BytePos, Span, Spanned };
 
-grammar;
+grammar<'err>(
+    errors: &'err mut Errors,
+);
 
 match {
     r"\s*" => {},
     r"//[^\r\n]*[\r\n]*" => {},
     _,
 }
+
+#[inline]
+Sp<Rule>: Spanned<BytePos, Rule> =
+    <l: @L> <rule: Rule> <r: @R> =>
+        Spanned::from((Span::new_unchecked(l, r), rule));
+
+RecoverError: () = {
+    <!> => errors.push(<>.error.into()),
+};
 
 pub KagamiModule: KagamiModule = <func_def: FuncDef> => KagamiModule { <> };
 
@@ -24,8 +38,24 @@ Stmt: Stmt = "return" <num: IntLiteral> ";" => Stmt { <> };
 Ident: String = r"[_a-zA-Z][_a-zA-Z0-9]*" => <>.to_string();
 
 SimpleStringLiteral: String = {
-    r#""([^"\\\r\n]|\\[^\r\n])*""# => (&<>[1..<>.len() - 1]).to_string(),
-    r#"'([^'\\\r\n]|\\[^\r\n])*'"# => (&<>[1..<>.len() - 1]).to_string(),
+    Sp<r#""([^"\\\r\n]|\\[^\r\n])*""#> => {
+        match string_literal::unescape(&(<>.value)[1..(<>.value).len() - 1]) {
+            Ok(s) => s.into(),
+            Err(err) => {
+                errors.push(Spanned::from((<>.span, err)));
+                <>.value.into()
+            },
+        }
+    },
+    Sp<r#"'([^'\\\r\n]|\\[^\r\n])*'"#> => {
+        match string_literal::unescape(&(<>.value)[1..(<>.value).len() - 1]) {
+            Ok(s) => s.into(),
+            Err(err) => {
+                errors.push(Spanned::from((<>.span, err)));
+                <>.value.into()
+            },
+        }
+    },
 }
 
 IntLiteral: i64 = {
