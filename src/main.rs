@@ -9,7 +9,9 @@ use std::io;
 fn main() -> io::Result<()> {
     let mut args = args();
     args.next();
-    let file = args.next().unwrap_or_else(|| "test/code/1.kgm".to_string());
+    let file = args
+        .next()
+        .unwrap_or_else(|| "tests/code/1.kgm".to_string());
 
     let input = read_to_string(file).unwrap();
     let mut errors = parser::Errors::new();
