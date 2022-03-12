@@ -7,7 +7,7 @@ pub struct Span<I> {
 }
 
 impl<I: Ord> Span<I> {
-    pub fn new(start: I, end: I) -> Span<I> {
+    pub fn new(start: I, end: I) -> Self {
         if start > end {
             panic!("Span end must be greater than or equal to start");
         }
@@ -17,7 +17,7 @@ impl<I: Ord> Span<I> {
 }
 
 impl<I> Span<I> {
-    pub const fn new_unchecked(start: I, end: I) -> Span<I> {
+    pub const fn new_unchecked(start: I, end: I) -> Self {
         Span { start, end }
     }
 }
@@ -29,7 +29,7 @@ pub struct Spanned<I, T> {
 }
 
 impl<I, T> From<(Span<I>, T)> for Spanned<I, T> {
-    fn from((span, value): (Span<I>, T)) -> Spanned<I, T> {
+    fn from((span, value): (Span<I>, T)) -> Self {
         Spanned { span, value }
     }
 }
