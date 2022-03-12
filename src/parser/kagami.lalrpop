@@ -1,4 +1,4 @@
-use crate::ast::{ KagamiModule, FuncDef, FuncBody, Block, Stmt };
+use crate::ast::*;
 use crate::parser::string_literal;
 use crate::parser::{ Errors };
 use crate::base::pos::{ BytePos, Span, Spanned };
