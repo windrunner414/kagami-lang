@@ -85,3 +85,36 @@ pub fn unescape(string: &str) -> Result<Cow<str>> {
         None => Ok(string.into()),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    extern crate test;
+
+    use super::*;
+    use test::Bencher;
+
+    #[bench]
+    fn bench_s_no_escape(b: &mut Bencher) {
+        b.iter(|| unescape(r"fnaeuoifhda"));
+    }
+
+    #[bench]
+    fn bench_s(b: &mut Bencher) {
+        b.iter(|| unescape(r"fnaeuo\nifh\tda"));
+    }
+
+    #[bench]
+    fn bench_l_no_escape(b: &mut Bencher) {
+        b.iter(|| unescape(r"fnaeuoiarlgijfigexbfasdaojknm23iojuf8asfoiucnmlaw4ijasefdasfhdaaefdasfawefvzxcvzxcvase"));
+    }
+
+    #[bench]
+    fn bench_l(b: &mut Bencher) {
+        b.iter(|| unescape(r"fnaeuoiarl\ngijfigexbfasdaojknm\u{41}23iojuf8asfoi\tucnm\\law4ijasefdasfhdaaefda\u0041sfawefvzxcvzxcvase"));
+    }
+
+    #[bench]
+    fn bench_many_escapes(b: &mut Bencher) {
+        b.iter(|| unescape(r"\u6b64\u65b9\u5c0f\u955c\u529e\u4e8b\u4e2d"));
+    }
+}
