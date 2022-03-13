@@ -6,7 +6,6 @@ use std::str;
 
 /// Allowed escape characters: \n, \r, \t, \\, \', \", \uXXXX, \u{X{1, 6}}
 pub fn unescape(string: &str) -> Result<Cow<str>> {
-    #[inline]
     fn unescape_unicode(string: &str) -> Result<(char, usize)> {
         // \uXXXX or \u{X{1, 6}}
         let len = string.len();
@@ -56,7 +55,6 @@ pub fn unescape(string: &str) -> Result<Cow<str>> {
         }
     }
 
-    #[inline]
     fn push_unescape_one(dst: &mut String, string: &str) -> Result<usize> {
         if string.len() <= 1 {
             return Err(anyhow!("unexpected EOF"));
@@ -82,14 +80,14 @@ pub fn unescape(string: &str) -> Result<Cow<str>> {
 
     match memchr(b'\\', string.as_bytes()) {
         Some(i) => {
-            let max_len = string.len();
-            let mut u_string = String::with_capacity(max_len);
+            let origin_len = string.len();
+            let mut u_string = String::with_capacity(origin_len);
             u_string.push_str(&string[..i]);
             let push_len = push_unescape_one(&mut u_string, &string[i..])
                 .with_context(|| anyhow!("Invalid escape sequence at {}", i))?;
 
             let mut start = i + push_len;
-            while start < max_len {
+            while start < origin_len {
                 let search_str = &string[start..];
 
                 match memchr(b'\\', search_str.as_bytes()) {
