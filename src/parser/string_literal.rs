@@ -1,85 +1,114 @@
 use anyhow::{anyhow, Context, Result};
+use memchr::memchr;
 use std::borrow::Cow;
-use std::str::CharIndices;
+use std::cmp::min;
+use std::str;
 
-/// Allowed escape characters: \n, \r, \t, \\, \', \", \u, \u{}
+/// Allowed escape characters: \n, \r, \t, \\, \', \", \uXXXX, \u{X{1, 6}}
 pub fn unescape(string: &str) -> Result<Cow<str>> {
     #[inline]
-    fn unescape_unicode(chars: &mut CharIndices) -> Result<char> {
-        let mut u_str = String::with_capacity(6);
-        match chars.next() {
-            None => return Err(anyhow!("unexpected EOF")),
-            Some((_, '{')) => loop {
-                match chars.next() {
-                    None => return Err(anyhow!("unexpected EOF")),
-                    Some((_, '}')) => {
-                        if u_str.is_empty() {
+    fn unescape_unicode(string: &str) -> Result<(char, usize)> {
+        // \uXXXX or \u{X{1, 6}}
+        let len = string.len();
+        if len <= 3 {
+            return Err(anyhow!("Unexpected EOF"));
+        }
+
+        let bytes = string.as_bytes();
+        match unsafe { *bytes.get_unchecked(2) } {
+            b'{' => {
+                for i in 3..min(len, 10) {
+                    if unsafe { *bytes.get_unchecked(i) } == b'}' {
+                        if i == 3 {
                             return Err(anyhow!("Unicode escape must have at least 1 hex digit"));
                         }
-                        break;
-                    }
-                    Some((_, u_c)) => {
-                        u_str.push(u_c);
-                        if u_str.len() > 6 {
-                            return Err(anyhow!("Unicode escape must have at most 6 hex digits"));
-                        }
+
+                        return Ok((
+                            char::try_from(u32::from_str_radix(
+                                unsafe { str::from_utf8_unchecked(&bytes[3..i]) },
+                                16,
+                            )?)?,
+                            i + 1,
+                        ));
                     }
                 }
-            },
-            Some((_, u_c)) => {
-                u_str.push(u_c);
-                for _ in 0..3 {
-                    match chars.next() {
-                        None => return Err(anyhow!("unexpected EOF")),
-                        Some((_, u_c)) => u_str.push(u_c),
+
+                Err(anyhow!("Unicode escape must have at most 6 hex digits"))
+            }
+            _ => {
+                if len < 6 {
+                    Err(anyhow!("Unexpected EOF"))
+                } else {
+                    let i = unsafe { (bytes.as_ptr().add(2) as *const u32).read_unaligned() };
+                    if i & 0x80_80_80_80u32 == 0 {
+                        Ok((
+                            char::try_from(u32::from_str_radix(
+                                unsafe { str::from_utf8_unchecked(&bytes[2..6]) },
+                                16,
+                            )?)?,
+                            6,
+                        ))
+                    } else {
+                        Err(anyhow!("Invalid hex digit"))
                     }
                 }
             }
         }
-        Ok(char::try_from(u32::from_str_radix(&u_str, 16)?)?)
     }
 
     #[inline]
-    fn push_unescape(dst: &mut String, string: &str, o_offset: usize) -> Result<()> {
-        let mut chars = string.char_indices();
+    fn push_unescape_one(dst: &mut String, string: &str) -> Result<usize> {
+        if string.len() <= 1 {
+            return Err(anyhow!("unexpected EOF"));
+        }
 
-        while let Some((_, c1)) = chars.next() {
-            if c1 != '\\' {
-                dst.push(c1);
-            } else {
-                match chars.next() {
-                    None => return Err(anyhow!("unexpected EOF")),
-                    Some((i, c2)) => {
-                        dst.push(match c2 {
-                            '"' | '\'' | '\\' => c2,
-                            'n' => '\n',
-                            'r' => '\r',
-                            't' => '\t',
-                            'u' => unescape_unicode(&mut chars).with_context(|| {
-                                anyhow!("Invalid Unicode escape sequence from {}", o_offset + i)
-                            })?,
-                            _ => {
-                                return Err(anyhow!(
-                                    "Invalid escape character '{}' at {}",
-                                    c2,
-                                    o_offset + i,
-                                ))
-                            }
-                        });
+        let c = unsafe { *string.as_bytes().get_unchecked(1) };
+
+        dst.push(match c {
+            b'"' | b'\'' | b'\\' => c as char,
+            b'n' => '\n',
+            b'r' => '\r',
+            b't' => '\t',
+            b'u' => {
+                let (u, len) = unescape_unicode(string)?;
+                dst.push(u);
+                return Ok(len);
+            }
+            _ => return Err(anyhow!("Invalid escape character '{}'", c as char)),
+        });
+
+        Ok(2)
+    }
+
+    match memchr(b'\\', string.as_bytes()) {
+        Some(i) => {
+            let max_len = string.len();
+            let mut u_string = String::with_capacity(max_len);
+            u_string.push_str(&string[..i]);
+            let push_len = push_unescape_one(&mut u_string, &string[i..])
+                .with_context(|| anyhow!("Invalid escape sequence at {}", i))?;
+
+            let mut start = i + push_len;
+            while start < max_len {
+                let search_str = &string[start..];
+
+                match memchr(b'\\', search_str.as_bytes()) {
+                    Some(i) => {
+                        start += i;
+
+                        u_string.push_str(&search_str[..i]);
+                        let push_len = push_unescape_one(&mut u_string, &search_str[i..])
+                            .with_context(|| anyhow!("Invalid escape sequence at {}", start))?;
+
+                        start += push_len;
+                    }
+                    None => {
+                        u_string.push_str(search_str);
+                        break;
                     }
                 }
             }
-        }
 
-        Ok(())
-    }
-
-    match string.find('\\') {
-        Some(i) => {
-            let mut u_string = String::with_capacity(string.len() - 1);
-            u_string.push_str(&string[0..i]);
-            push_unescape(&mut u_string, &string[i..], i)
-                .with_context(|| "Invalid unescape sequence")?;
             Ok(u_string.into())
         }
         None => Ok(string.into()),
@@ -114,7 +143,7 @@ mod tests {
     }
 
     #[bench]
-    fn bench_many_escapes(b: &mut Bencher) {
-        b.iter(|| unescape(r"\u6b64\u65b9\u5c0f\u955c\u529e\u4e8b\u4e2d"));
+    fn bench_unicode_escape(b: &mut Bencher) {
+        b.iter(|| unescape(r"\u6b64\u65b9\u5c0f\u955c\u529e\u4e8b\u4e2d\u6b64\u65b9\u5c0f\u955c\u529e\u4e8b\u4e2d"));
     }
 }

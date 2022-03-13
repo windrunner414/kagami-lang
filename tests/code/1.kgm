@@ -1,1 +1,1 @@
-func main(): int = native "sgrfdg\nd\r\n\\\tsdf\thh\u{41}\u0042\u{0000050}hhde\"\'ds";
+func main(): int = native "\u6b64\u65b9\u5c0f\u955c\u529e\u4e8b\u4e2d\u6b64\u65b9\u5c0f\u955c\u529e\u4e8b\u4e2d";
